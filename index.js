@@ -11,6 +11,13 @@ dotenv.config()
 
 //Import route modules
 import  userAuth  from "./Routes/User/userAuthRoutes.js";
+import adventureAuth from "./Routes/Adventure/adventureAuthRoutes.js"
+import adminAuth from "./Routes/Admin/adminAuthRoutes.js"
+
+
+import AdminRoutes from "./Routes/Admin/adminRoutes.js";
+import userRoutes from "./Routes/User/userRoutes.js";
+import AdventureRoutes from './Routes/Adventure/adventureRoutes.js'
 
 const app = express()
 
@@ -35,6 +42,12 @@ app.use(cors({
 }))
 
 app.use('/user/auth',userAuth)
+app.use('/adventure/adventureAuth',adventureAuth)
+app.use('/admin/adminAuth',adminAuth)
+
+app.use('/admin',AdminRoutes)
+app.use('/user',userRoutes)
+app.use('/adventure',AdventureRoutes)
 
 
 app.listen(process.env.PORTNUMBER,()=>{
