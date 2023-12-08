@@ -5,6 +5,7 @@ import Adventure from "../Models/adventureModel.js";
 
 export const Login = async(req,res,next)=>{
     try {
+        console.log('in admjin')
         const{email,password} = req.body
         const admin = await User.findOne({email:email})
         if(!admin){
