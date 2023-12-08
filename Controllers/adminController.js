@@ -1,5 +1,7 @@
 import Adventure from "../Models/adventureModel.js";
+import Booking from "../Models/bookingModel.js";
 import User from "../Models/userModel.js";
+import { sendRejectionMail } from "../utils/sendMail.js";
 
 
 
@@ -104,5 +106,32 @@ export const verifyAdventure = async(req,res,next)=>{
 }
 
 
+export const adminBooking = async(req,res,next)=>{
+    try {
+       const booking = await Booking.find().populate("adventureId").populate("userId")
+       return res.status(200).json({data : booking, message : 'Booking data found'})
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
 
+    }
+}
 
+export const rejectAdventure = async (req, res, next) => {
+  try {
+    const id = req.params.id;
+    const { reason } = req.body;
+    const reject = await Adventure.findOneAndUpdate(
+      { _id: id },
+      {
+        $set: {
+          requested: false,
+        },
+      }
+    );
+    await sendRejectionMail(reject.email, "verification rejected", reason);
+
+    return res.status(200).json({ reject: true, message: "adventure rejected" });
+  } catch (error) {
+    console.log(error.message);
+  }
+};

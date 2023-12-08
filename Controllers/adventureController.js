@@ -1,6 +1,9 @@
 import Adventure from "../Models/adventureModel.js";
 import Category from "../Models/categoryModel.js";
-import uploadToClodinary from "../utils/Cloudinary.js";
+import Chat from "../Models/chatModel.js";
+import User from "../Models/userModel.js";
+import uploadToClodinary, { validateImageFormat } from "../utils/Cloudinary.js";
+
 
 export const getAdventure = async (req, res, next) => {
     try {
@@ -42,7 +45,7 @@ export const editProfile = async (req, res, next) => {
             },
             { new: true }
         )
-        
+
         if (editAdventure) {
             return res.status(200).json({ updated: true, data: editAdventure, message: 'Profile is updated successfully' })
         } else {
@@ -66,18 +69,14 @@ export const advCategory = async (req, res, next) => {
 export const ProfileImage = async (req, res, next) => {
     try {
         const id = req.headers.adventureId;
-
         const image = req.file.path;
         const uploadDp = await uploadToClodinary(image, "dp");
-        console.log(uploadDp)
         const updated = await Adventure.findByIdAndUpdate(
             { _id: id },
             { $set: { image: uploadDp.url } },
             { new: true }
         );
-        console.log(updated)
         if (updated) {
-            console.log("updated image");
             return res
                 .status(200)
                 .json({ data: updated, message: "Profile picture updated" });
@@ -90,10 +89,8 @@ export const ProfileImage = async (req, res, next) => {
 
 export const addCategory = async (req, res, next) => {
     try {
-        console.log("add cat in");
-
         const advId = req.headers.adventureId;
-        const { categoryName, entryFee } = req.body;
+        const { categoryName, entryFee, catDescription } = req.body;
         const img = req.file.path;
 
         // Ensure the uploadToClodinary function is implemented correctly
@@ -107,30 +104,31 @@ export const addCategory = async (req, res, next) => {
         if (exist) {
             return res.status(200).json({ created: false, message: 'Category name already exists' });
         }
-if (uploadImg) {
-    
-    const newCat = {
-        categoryName: categoryName,
-        entryFee: entryFee,
-        image: uploadImg.url,
-        status: true
-    };
+        if (uploadImg) {
 
-    // Ensure Adventure model is correctly defined
-    const updated = await Adventure.findByIdAndUpdate(
-        { _id: advId },
-        { $push: { category: newCat } },
-        { new: true }
-    );
+            const newCat = {
+                categoryName: categoryName,
+                entryFee: entryFee,
+                image: uploadImg.url,
+                catDescription: catDescription,
+                status: true
+            };
 
-    if (updated) {
-        return res.status(200).json({ created: true, message: 'Category added' });
-    } else {
-        return res.status(500).json({ error: 'Failed to update adventure with the new category' });
-    }
-}else{
-    console.log("image upload failed");
-}
+            // Ensure Adventure model is correctly defined
+            const updated = await Adventure.findByIdAndUpdate(
+                { _id: advId },
+                { $push: { category: newCat } },
+                { new: true }
+            );
+
+            if (updated) {
+                return res.status(200).json({ created: true, message: 'Category added' });
+            } else {
+                return res.status(500).json({ error: 'Failed to update adventure with the new category' });
+            }
+        } else {
+            console.log("image upload failed");
+        }
     } catch (error) {
         console.error('Error in addCategory:', error);
         return res.status(500).json({ error: error.message });
@@ -144,7 +142,7 @@ export const allCategory = async (req, res, next) => {
         const categories = await Adventure.find({ _id: advId, }, { category: 1 })
         const [extractedCategories] = categories;
 
-     
+
         return res.status(200).json({ data: extractedCategories, message: 'Category is added' })
     } catch (error) {
         return res.status(500).json({ error: error.message });
@@ -196,6 +194,101 @@ export const manageCategoryList = async (req, res, next) => {
         } else {
             res.status(404).json({ message: "Category not found" });
         }
+
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+export const fetchChats = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const result = await Chat.find({ "users.adventure": userId })
+            .populate("users.user", "-password")
+            .populate("users.adventure", "-password")
+            .populate("latestMessage")
+            .populate({
+                path: "latestMessage",
+                populate: {
+                    path: "sender.adventure",
+                    select: "-password",
+                },
+            })
+            .populate({
+                path: "latestMessage",
+                populate: {
+                    path: "sender.user",
+                    select: "-password",
+                },
+            })
+            .then((result) => {
+                console.log(result), res.send(result);
+            });
+    } catch (error) {
+        console.log(error.message);
+    }
+};
+export const searchUsers = async (req, res) => {
+    try {
+        const keyword = req.query.search
+            ? {
+                $or: [
+                    { name: { $regex: req.query.search, $options: "i" } },
+                    { email: { $regex: req.query.search, $options: "i" } },
+                ],
+            }
+            : {};
+        console.log(keyword);
+
+        const users = await User.find(keyword); //.find({ _id: { $ne: req.user._id } });
+
+        res.status(200).json(users);
+    } catch (error) {
+        console.log(error.message);
+    }
+};
+
+export const editCategory = async (req, res, next) => {
+    try {
+        const advId = req.headers.adventureId
+        const catId = req.body._id
+        const {
+            categoryName,
+            entryFee,
+            catDescription,
+            image
+        } = req.body
+
+        const editCat = await Adventure.findOneAndUpdate({ _id: advId, 'category._id': catId },
+            {
+                $set: {
+                    "category.$.categoryName": categoryName,
+                    "category.$.entryFee": entryFee,
+                    "category.$.catDescription": catDescription,
+                    "category.$.image": image
+                }
+            },
+            { new: true })
+        console.log(editCat, 'edit cat is heere');
+        if (editCategory) {
+            // Category found
+            return res.status(200).json({ updated: true, data: editCat, message: "Category Found" })
+        } else {
+            // Category not found
+            return res.status(200).json({ message: 'Data not found' })
+        }
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+}
+
+
+export const addPosts = async (req, res, next) => {
+    try {
+        const image = req.file.path;
+        const img = await uploadToClodinary(image, "posts");
+        const { category} = req.body
+        
 
     } catch (error) {
         return res.status(500).json({ error: error.message });

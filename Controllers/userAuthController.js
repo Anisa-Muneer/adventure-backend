@@ -30,7 +30,6 @@ export const Signup = async(req,res,next)=>{
               }).save();
               const url = `${process.env.SERVERURL}/${user._id}/verify/${emailtoken.token}`;
               await sendMail(user.email, "Verify Email", url);
-              console.log("email Succes");
               return res.status(200).json({
                 created: true,
                 emailtoken,
@@ -101,7 +100,6 @@ export const Login = async(req,res,next)=>{
 
 export const SignupWithGoogle = async (req,res,next)=>{
     try {
-        console.log("in");
     const{name,email,id} = req.body
     const exist = await User.findOne({email:email})
     if(exist){
