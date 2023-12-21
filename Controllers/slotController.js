@@ -7,87 +7,87 @@ import Booking from "../Models/bookingModel.js";
 import User from "../Models/userModel.js";
 
 
-export const addSlots = async(req,res,next)=>{
-    try {
-       const advId =  req.headers.adventureId;
-       const {startTime, endTime, startDate, endDate, category} = req.body
-   
-       if(new Date(endDate) < new Date(startDate)){
-        return res.status(400).json({message : 'End date must be greater than or equal to start date'})
-       }
-       const slotDuration = 30
-       const createdSlots = []
+export const addSlots = async (req, res, next) => {
+  try {
+    const advId = req.headers.adventureId;
+    const { startTime, endTime, startDate, endDate, category } = req.body
 
-       const currentDate = new Date(startDate)
-       const endDateObj = new Date(endDate)
-
-       while(currentDate <= endDateObj){
-        const date = currentDate.toLocaleDateString()
-        
-        const findSlotExist = await Slot.findOne({
-            adventure: advId,
-            slotes: {
-              $elemMatch: {
-                slotDate: date,
-                $or: [
-                  {
-                    slotTime: { $gte: startTime, $lt: endTime },
-                  },
-                  {
-                    slotTime: { $lte: startTime },
-                    endTime: { $gt: startTime },
-                  },
-                  {
-                    slotTime: { $lt: endTime },
-                    endTime: { $gte: endTime },
-                  },
-                ],
-              },
-            },
-          });
-          if (findSlotExist) {
-            return res.status(409).json({ message: "Slot already exists" });
-          }
-    
-          const createSlots = generateTimeSlots(
-            startTime,
-            endTime,
-            slotDuration,
-            date,
-            category,
-          );
-          createdSlots.push({
-            date: currentDate,
-            slots: createSlots,
-          });
-    
-          currentDate.setDate(currentDate.getDate() + 1);
-       }
-       const slotData = createdSlots.map((slotObj) => {
-        return {
-          adventure: advId,
-          slotes: slotObj.slots,
-        };
-      });
-   
-  
-      const savedSlots = await Slot.create(slotData);
-  
-      return res.status(200).json(savedSlots);
-
-    } catch (error) {
-        return res.status(500).json({ error: error.message });
+    if (new Date(endDate) < new Date(startDate)) {
+      return res.status(400).json({ message: 'End date must be greater than or equal to start date' })
     }
+    const slotDuration = 30
+    const createdSlots = []
+
+    const currentDate = new Date(startDate)
+    const endDateObj = new Date(endDate)
+
+    while (currentDate <= endDateObj) {
+      const date = currentDate.toLocaleDateString()
+
+      const findSlotExist = await Slot.findOne({
+        adventure: advId,
+        slotes: {
+          $elemMatch: {
+            slotDate: date,
+            $or: [
+              {
+                slotTime: { $gte: startTime, $lt: endTime },
+              },
+              {
+                slotTime: { $lte: startTime },
+                endTime: { $gt: startTime },
+              },
+              {
+                slotTime: { $lt: endTime },
+                endTime: { $gte: endTime },
+              },
+            ],
+          },
+        },
+      });
+      if (findSlotExist) {
+        return res.status(409).json({ message: "Slot already exists" });
+      }
+
+      const createSlots = generateTimeSlots(
+        startTime,
+        endTime,
+        slotDuration,
+        date,
+        category,
+      );
+      createdSlots.push({
+        date: currentDate,
+        slots: createSlots,
+      });
+
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    const slotData = createdSlots.map((slotObj) => {
+      return {
+        adventure: advId,
+        slotes: slotObj.slots,
+      };
+    });
+
+
+    const savedSlots = await Slot.create(slotData);
+
+    return res.status(200).json(savedSlots);
+
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
 }
 
-export const slotCategory = async(req,res,next)=>{    
+export const slotCategory = async (req, res, next) => {
   try {
     const id = req.headers.adventureId
     const data = await Adventure.findById(id)
-    if(data){
-        return res.status(200).json({ data : data})
-    }else{
-        return res.status(200).json({message : 'Data not found'})
+    if (data) {
+      return res.status(200).json({ data: data })
+    } else {
+      return res.status(200).json({ message: 'Data not found' })
     }
   } catch (error) {
     return res.status(500).json({ error: error.message });
@@ -95,7 +95,7 @@ export const slotCategory = async(req,res,next)=>{
 }
 
 
-function generateTimeSlots(startTime, endTime, slotDuration, date ,category) {
+function generateTimeSlots(startTime, endTime, slotDuration, date, category) {
   const slots = [];
 
   const end = new Date(`${date} ${endTime}`);
@@ -113,7 +113,7 @@ function generateTimeSlots(startTime, endTime, slotDuration, date ,category) {
       slotDate: date,
       date: start,
       isBooked: false,
-      category : category
+      category: category
     };
 
     slots.push(slotDoc);
@@ -123,50 +123,53 @@ function generateTimeSlots(startTime, endTime, slotDuration, date ,category) {
   return slots;
 }
 
-export const getSlotDate = async(req,res,next)=>{
+export const getSlotDate = async (req, res, next) => {
   try {
-    
+
     const advId = req.headers.adventureId
     const result = await Slot.aggregate([
-      {$match:{
-        adventure : new mongoose.Types.ObjectId(advId)
+      {
+        $match: {
+          adventure: new mongoose.Types.ObjectId(advId)
+        }
+      },
+      { $unwind: "$slotes" },
+      {
+        $group: {
+          _id: "$slotes.slotDate",
+          slotDates: { $addToSet: "$slotes.slotDate" }
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          slotDates: 1
+        }
       }
-    },
-    {$unwind : "$slotes"},
-    {
-      $group:{
-      _id : "$slotes.slotDate",
-      slotDates : {$addToSet : "$slotes.slotDate"}
-    },
-  },
-    {$project:{
-      _id : 0,
-      slotDates : 1
-    }}
     ])
-    if(result){
-      const slotArray = result.map((item)=>item.slotDates)
+    if (result) {
+      const slotArray = result.map((item) => item.slotDates)
       const slotDates = slotArray.flat()
-      return res.status(200).json({data : slotDates, message : "Success"})
-    }else{
-      return res.status(200).json({message : "No slots"})
+      return res.status(200).json({ data: slotDates, message: "Success" })
+    } else {
+      return res.status(200).json({ message: "No slots" })
     }
 
   } catch (error) {
     return res.status(500).json({ error: error.message });
-    }
+  }
 }
 
-export const getSlots = async(req,res,next)=>{
+export const getSlots = async (req, res, next) => {
   try {
-   
-    const {date} = req.query
-    if(!date){
-      return res.status(200).json({message : "Date is not found"})
+
+    const { date } = req.query
+    if (!date) {
+      return res.status(200).json({ message: "Date is not found" })
     }
     const advId = req.headers.adventureId
     const data = await Adventure.findById(advId)
-    const yesterday = moment().subtract( 1, "days").format("YYYY-MM-DD")
+    const yesterday = moment().subtract(1, "days").format("YYYY-MM-DD")
     await Slot.updateMany(
       {
         adventure: data._id,
@@ -192,12 +195,12 @@ export const getSlots = async(req,res,next)=>{
     }
   } catch (error) {
     return res.status(500).json({ error: error.message });
-    }
+  }
 }
 
 export const getSlotDateUser = async (req, res, next) => {
   try {
-    const { adventureId,categoryName } = req.query;
+    const { adventureId, categoryName } = req.query;
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate());
     const result = await Slot.aggregate([
@@ -224,7 +227,7 @@ export const getSlotDateUser = async (req, res, next) => {
         },
       },
     ]);
-    
+
     if (result) {
       const slotArray = result.map((item) => item.slotDates);
       const slotDates = slotArray.flat();
@@ -238,19 +241,19 @@ export const getSlotDateUser = async (req, res, next) => {
   }
 };
 
-export const getSlotsUser = async(req,res,next)=>{
+export const getSlotsUser = async (req, res, next) => {
   try {
-    const {date, adventureId, categoryName} = req.query
-    if(!date){
-      return res.status(200).json({message : "Please select a date"})
+    const { date, adventureId, categoryName } = req.query
+    if (!date) {
+      return res.status(200).json({ message: "Please select a date" })
     }
     const availableSlots = await Slot.find({
-      adventure : adventureId,
-      category : categoryName,
-      "slotes.slotDate" : new Date(date),
-      "slotes.isBooked" : false
+      adventure: adventureId,
+      category: categoryName,
+      "slotes.slotDate": new Date(date),
+      "slotes.isBooked": false
     }).exec()
-    if(availableSlots){
+    if (availableSlots) {
       const mergedObject = availableSlots.reduce((result, slot) => {
         slot.slotes.forEach((slotInfo) => {
           if (slotInfo.slotDate) {
@@ -263,35 +266,35 @@ export const getSlotsUser = async(req,res,next)=>{
         return result;
       }, {});
       const mergedArray = [].concat(...Object.values(mergedObject));
-   
+
 
       return res.status(200).json({ data: mergedArray, message: "success" });
     } else {
       return res.status(200).json({ message: "slote not avilble" });
     }
-    
+
   } catch (error) {
     return res.status(500).json({ error: error.message });
 
   }
 }
 
-export const payment = async(req,res,next)=>{
+export const payment = async (req, res, next) => {
   try {
     const stripe = new Stripe(
       "sk_test_51OF855SGN2zHCLENS0gaFeQhHc7oLPwx2DSd8IC4dKhtQJIYo4OxdlJ8oONQEVI118Ero5V9RQbGEjkITJqtHQxN00HN1rnb3k"
     )
     const adventure = await Adventure.findById(req.params.id)
-      const data= adventure.category.filter(category => category.categoryName === req.params.category);
-      const entryFee = data[0].entryFee
-      const paymentintent = await stripe.paymentIntents.create({
-        amount: entryFee * 100,
-        currency: "inr",
-        automatic_payment_methods: {
-          enabled: true,
-        },
-      });
-    return res.status(200).json({clientSecret : paymentintent.client_secret})
+    const data = adventure.category.filter(category => category.categoryName === req.params.category);
+    const entryFee = data[0].entryFee
+    const paymentintent = await stripe.paymentIntents.create({
+      amount: entryFee * 100,
+      currency: "inr",
+      automatic_payment_methods: {
+        enabled: true,
+      },
+    });
+    return res.status(200).json({ clientSecret: paymentintent.client_secret })
 
 
   } catch (error) {
@@ -299,19 +302,20 @@ export const payment = async(req,res,next)=>{
   }
 }
 
-export const paymentSuccess = async(req,res,next)=>{
+export const paymentSuccess = async (req, res, next) => {
   try {
     const bookingDetails = req.body.bookdata
+    console.log(bookingDetails, 'booking details is here');
     const userId = req.headers.userId
     new Booking({
-        adventureId : bookingDetails.advId,
-        userId : userId,
-        entryFee: bookingDetails.entryFee,
-        categoryName : bookingDetails.categoryName,
-        scheduledAt:{
-          slotTime : bookingDetails.slotTime,
-          slotDate : bookingDetails.slotDate
-        }
+      adventureId: bookingDetails.advId,
+      userId: userId,
+      entryFee: bookingDetails.entryFee,
+      categoryName: bookingDetails.categoryName,
+      scheduledAt: {
+        slotTime: bookingDetails.slotTime,
+        slotDate: bookingDetails.slotDate
+      }
 
     }).save()
 
@@ -324,17 +328,17 @@ export const paymentSuccess = async(req,res,next)=>{
       },
       { $set: { "slotes.$.isBooked": true } }
     );
-    return res.status(200).json({success:true})
+    return res.status(200).json({ success: true })
   } catch (error) {
     return res.status(500).json({ error: error.message });
 
   }
 }
 
-export const userBooking = async(req,res,next)=>{
+export const userBooking = async (req, res, next) => {
   try {
     const booking = await Booking.find().populate("userId")
-    return res.status(200).json({data : booking})
+    return res.status(200).json({ data: booking })
   } catch (error) {
     return res.status(500).json({ error: error.message });
 
@@ -342,30 +346,30 @@ export const userBooking = async(req,res,next)=>{
 }
 
 
-export const bookingDetails = async(req,res,next)=>{
-   const id = req.headers.userId
+export const bookingDetails = async (req, res, next) => {
+  const id = req.headers.userId
   try {
-    const booking = await Booking.find({userId:id})
-     .populate({
+    const booking = await Booking.find({ userId: id })
+      .populate({
         path: "adventureId",
         select: "name location",
       })
       .exec();
-    return res.status(200).json({data : booking})
+    return res.status(200).json({ data: booking })
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }
 }
 
-export const slotDelete = async(req,res,next)=>{
+export const slotDelete = async (req, res, next) => {
   try {
     const slotId = req.params.slotId
     const id = req.params.id
-     const deletedSlot = await Slot.
-     updateOne(
-  { _id: slotId },
-  { $pull: { slotes: { _id: id } } }
-);
+    const deletedSlot = await Slot.
+      updateOne(
+        { _id: slotId },
+        { $pull: { slotes: { _id: id } } }
+      );
     if (!deletedSlot) {
       return res.status(404).json({ message: 'Slot not found' });
     }
@@ -389,10 +393,10 @@ export const cancelBooking = async (req, res, next) => {
     let scheduledDate = new Date(booking.scheduledAt.slotDate);
     let currentDate = new Date();
     currentDate.setHours(0, 0, 0, 0);
-    
+
     const formattedScheduledDate = scheduledDate.toLocaleString();
     const formattedCurrentDate = currentDate.toLocaleString();
-   
+
     if (formattedScheduledDate > formattedCurrentDate) {
       const updated = await Booking.findOneAndUpdate(
         { _id: id },
@@ -404,12 +408,12 @@ export const cancelBooking = async (req, res, next) => {
       );
 
       if (updated) {
-       
+
         await User.findByIdAndUpdate(
           { _id: userId },
           { $inc: { wallet: entryFee } }
         );
-       
+
         return res
           .status(200)
           .json({ updated: true, message: "your booking is canceled" });
@@ -430,65 +434,64 @@ export const cancelBooking = async (req, res, next) => {
 };
 
 
-export const walletPayment = async(req,res,next)=>{
+export const walletPayment = async (req, res, next) => {
   try {
-      const { advId, slotId, slotDate, slotTime, fee, categoryName } = req.body.bookingId.bookdata;
-      // const slot = req.body.bookingId.bookdata.slotId;
-      // const adId = req.body.bookingId.bookdata.advId;
-      // const catName = req.body.bookingId.bookdata.categoryName;
-      const usrId = req.headers.userId
-      // const specificSlot = await Slot.findOne({ "slotes._id": slot }, { "slotes.$": 1 });
-      // console.log(specificSlot, 'Specific slot');
-      // if (!specificSlot) {
-      //   return res.status(404).json({ message: 'Slot not found' });
-      // }
-      // const { category } = specificSlot.slotes[0];
-      // const adventureData = await Adventure.findOne({ 'category.categoryName': category });
-      // if (!adventureData) {
-      //   return res.status(404).json({ message: 'Adventure not found' });
-      // }
-      // const matchedCategory = adventureData.category.find(cat => cat.categoryName === category);
+    const { advId, slotId, slotDate, slotTime, totalAmount, categoryName } = req.body.bookingId.bookdata;
+    // const slot = req.body.bookingId.bookdata.slotId;
+    // const adId = req.body.bookingId.bookdata.advId;
+    // const catName = req.body.bookingId.bookdata.categoryName;
+    const usrId = req.headers.userId
+    // const specificSlot = await Slot.findOne({ "slotes._id": slot }, { "slotes.$": 1 });
+    // console.log(specificSlot, 'Specific slot');
+    // if (!specificSlot) {
+    //   return res.status(404).json({ message: 'Slot not found' });
+    // }
+    // const { category } = specificSlot.slotes[0];
+    // const adventureData = await Adventure.findOne({ 'category.categoryName': category });
+    // if (!adventureData) {
+    //   return res.status(404).json({ message: 'Adventure not found' });
+    // }
+    // const matchedCategory = adventureData.category.find(cat => cat.categoryName === category);
 
-      // if (matchedCategory) {
-      // const entryFee = matchedCategory.entryFee;
-  
-      const userData = await User.findOne({ _id: usrId });
-      console.log(userData.wallet,fee);
-      if (userData.wallet <= 0 || userData.wallet < fee) {
-        console.log('rrrrrrrrrrrrrr');
-        return res.status(200).json({status : false, message: 'Insufficient wallet amount' });
+    // if (matchedCategory) {
+    // const entryFee = matchedCategory.entryFee;
+
+    const userData = await User.findOne({ _id: usrId });
+    console.log(userData.wallet, totalAmount);
+    if (userData.wallet <= 0 || userData.wallet < fee) {
+      return res.status(200).json({ status: false, message: 'Insufficient wallet amount' });
+    }
+
+    const bookingSave = new Booking({
+      adventureId: advId,
+      userId: usrId,
+      entryFee: fee,
+      categoryName: categoryName,
+      paymentMethod: 'wallet',
+      scheduledAt: {
+        slotTime: slotTime,
+        slotDate: slotDate
       }
-     
-     const bookingSave =  new Booking({
-        adventureId : advId,
-        userId : usrId,
-        entryFee: fee,
-        categoryName : categoryName,
-        paymentMethod : 'wallet',
-        scheduledAt:{
-          slotTime : slotTime,
-          slotDate : slotDate
-        }
 
     })
     let bookingdata = await bookingSave.save()
 
-    
-await Slot.updateOne(
-  {
-    adventure: advId,
-    slotes: {
-      $elemMatch: { _id: slotId},
-    },
-  },
-  { $set: { "slotes.$.isBooked": true } }
-);
-   
-    
-      
-     const v = await User.updateOne({_id:usrId},{$inc:{wallet : - bookingdata.entryFee}})
-      return res.status(200).json({ status: true, message: "update completed" })
-     
+
+    await Slot.updateOne(
+      {
+        adventure: advId,
+        slotes: {
+          $elemMatch: { _id: slotId },
+        },
+      },
+      { $set: { "slotes.$.isBooked": true } }
+    );
+
+
+
+    const v = await User.updateOne({ _id: usrId }, { $inc: { wallet: - bookingdata.entryFee } })
+    return res.status(200).json({ status: true, message: "update completed" })
+
 
   } catch (error) {
     return res.status(500).json({ error: error.message });
@@ -496,14 +499,14 @@ await Slot.updateOne(
 }
 
 
-export const walletHistory = async(req,res,next)=>{
+export const walletHistory = async (req, res, next) => {
   try {
-     const userId = req.headers.userId;
+    const userId = req.headers.userId;
     const walletBookings = await Booking.find({ userId, paymentMethod: 'wallet' }).populate("userId").populate("adventureId")
-    if(walletBookings){
-      return res.json({ data : walletBookings });
+    if (walletBookings) {
+      return res.json({ data: walletBookings });
     }
-    
+
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }

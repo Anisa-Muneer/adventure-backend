@@ -1,3 +1,4 @@
+import Posts from "../Models/PostsModel.js";
 import Adventure from "../Models/adventureModel.js";
 import Category from "../Models/categoryModel.js";
 import Chat from "../Models/chatModel.js";
@@ -114,7 +115,6 @@ export const addCategory = async (req, res, next) => {
                 status: true
             };
 
-            // Ensure Adventure model is correctly defined
             const updated = await Adventure.findByIdAndUpdate(
                 { _id: advId },
                 { $push: { category: newCat } },
@@ -286,11 +286,52 @@ export const editCategory = async (req, res, next) => {
 export const addPosts = async (req, res, next) => {
     try {
         const image = req.file.path;
-        const img = await uploadToClodinary(image, "posts");
-        const { category} = req.body
-        
+        console.log(image, 'llllllllllllllllllllllllll');
+        const uploadImg = await uploadToClodinary(image, "posts");
+        const { category } = req.body
+        console.log(category, 'ppppppppppppppppp');
+        const advId = req.headers.adventureId
+
+        if (uploadImg) {
+            const newPost = new Posts({
+                category: category,
+                image: uploadImg.url,
+                adventure: advId,
+                status: true
+            })
+            let posts = await newPost.save()
+            console.log(posts, 'Post is saved')
+            return res.status(200).json({ created: true, data: posts, message: 'Post is added' })
+
+        }
+    } catch (error) {
+        return res.status(500).json({ error: error.messge });
+    }
+}
+
+
+export const getPosts = async (req, res, next) => {
+    try {
+        const advId = req.headers.adventureId
+        const posts = await Posts.find({ adventure: advId })
+        return res.status(200).json({ data: posts, message: 'Post added successfully' })
 
     } catch (error) {
-        return res.status(500).json({ error: error.message });
+        return res.status(500).json({ error: error.messge });
+    }
+}
+
+
+export const deletePost = async (req, res, next) => {
+    try {
+        console.log(req.body.id, 'ppppppppppppp');
+        const uId = req.body.id
+        console.log(uId, 'kkkkkkkkkkkkkkkkkkkkkkkkkkkk');
+        const postDelete = await Posts.deleteOne({ _id: uId })
+        if (postDelete) {
+            return res.status(200).json({ data: postDelete, message: 'Post is deleted' })
+        }
+    } catch (error) {
+        return res.status(500).json({ error: error.messge });
     }
 }
