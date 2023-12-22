@@ -10,8 +10,7 @@ import User from "../Models/userModel.js";
 export const addSlots = async (req, res, next) => {
   try {
     const advId = req.headers.adventureId;
-    const { startTime, endTime, startDate, endDate, category } = req.body
-
+    const { startTime, endTime, startDate, endDate, category, NoofSlots } = req.body
     if (new Date(endDate) < new Date(startDate)) {
       return res.status(400).json({ message: 'End date must be greater than or equal to start date' })
     }
@@ -29,6 +28,7 @@ export const addSlots = async (req, res, next) => {
         slotes: {
           $elemMatch: {
             slotDate: date,
+            category: category,
             $or: [
               {
                 slotTime: { $gte: startTime, $lt: endTime },
@@ -46,7 +46,7 @@ export const addSlots = async (req, res, next) => {
         },
       });
       if (findSlotExist) {
-        return res.status(409).json({ message: "Slot already exists" });
+        return res.status(200).json({ message: "Slot already exists" });
       }
 
       const createSlots = generateTimeSlots(
@@ -55,6 +55,7 @@ export const addSlots = async (req, res, next) => {
         slotDuration,
         date,
         category,
+        NoofSlots
       );
       createdSlots.push({
         date: currentDate,
@@ -69,16 +70,17 @@ export const addSlots = async (req, res, next) => {
         slotes: slotObj.slots,
       };
     });
-
+    console.log(JSON.stringify(slotData), 'pppppppppppppp')
 
     const savedSlots = await Slot.create(slotData);
-
+    console.log(JSON.stringify(savedSlots, null, 2), 'ooooooooooooooooooooo');
     return res.status(200).json(savedSlots);
 
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }
 }
+
 
 export const slotCategory = async (req, res, next) => {
   try {
@@ -95,7 +97,7 @@ export const slotCategory = async (req, res, next) => {
 }
 
 
-function generateTimeSlots(startTime, endTime, slotDuration, date, category) {
+function generateTimeSlots(startTime, endTime, slotDuration, date, category, NoofSlots) {
   const slots = [];
 
   const end = new Date(`${date} ${endTime}`);
@@ -113,7 +115,8 @@ function generateTimeSlots(startTime, endTime, slotDuration, date, category) {
       slotDate: date,
       date: start,
       isBooked: false,
-      category: category
+      category: category,
+      NoofSlots: NoofSlots
     };
 
     slots.push(slotDoc);

@@ -324,9 +324,7 @@ export const getPosts = async (req, res, next) => {
 
 export const deletePost = async (req, res, next) => {
     try {
-        console.log(req.body.id, 'ppppppppppppp');
         const uId = req.body.id
-        console.log(uId, 'kkkkkkkkkkkkkkkkkkkkkkkkkkkk');
         const postDelete = await Posts.deleteOne({ _id: uId })
         if (postDelete) {
             return res.status(200).json({ data: postDelete, message: 'Post is deleted' })

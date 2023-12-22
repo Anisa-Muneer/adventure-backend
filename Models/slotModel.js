@@ -1,13 +1,13 @@
 import mongoose from "mongoose";
-const { Schema,ObjectId } = mongoose;
+const { Schema, ObjectId } = mongoose;
 
 const slotSchema = new Schema({
-    adventure : {
-        type : Schema.Types.ObjectId,
-        ref : 'Adventure',
-        required : true
+    adventure: {
+        type: Schema.Types.ObjectId,
+        ref: 'Adventure',
+        required: true
     },
-    slotes : {
+    slotes: {
         type: [{
             slotTime: {
                 type: String,
@@ -25,9 +25,13 @@ const slotSchema = new Schema({
                 required: true,
                 default: false
             },
-            category:{
-                type : String,
-                required : true
+            category: {
+                type: String,
+                required: true
+            },
+            NoofSlots: {
+                type: Number,
+                required: true
             }
         }],
     },
@@ -35,8 +39,8 @@ const slotSchema = new Schema({
         type: Date,
         default: Date.now
     },
-  
+
 })
 
-const Slot = mongoose.model('Slot',slotSchema)
+const Slot = mongoose.model('Slot', slotSchema)
 export default Slot;
