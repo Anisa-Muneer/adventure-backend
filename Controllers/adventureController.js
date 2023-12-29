@@ -3,7 +3,7 @@ import Adventure from "../Models/adventureModel.js";
 import Category from "../Models/categoryModel.js";
 import Chat from "../Models/chatModel.js";
 import User from "../Models/userModel.js";
-import uploadToClodinary, { validateImageFormat } from "../utils/Cloudinary.js";
+import { MultiUploadCloudinary, uploadToClodinary } from "../utils/Cloudinary.js";
 
 
 export const getAdventure = async (req, res, next) => {
@@ -285,17 +285,14 @@ export const editCategory = async (req, res, next) => {
 
 export const addPosts = async (req, res, next) => {
     try {
-        const image = req.file.path;
-        console.log(image, 'llllllllllllllllllllllllll');
-        const uploadImg = await uploadToClodinary(image, "posts");
+        const uploadImg = await MultiUploadCloudinary(req.files, "posts");
         const { category } = req.body
-        console.log(category, 'ppppppppppppppppp');
         const advId = req.headers.adventureId
 
         if (uploadImg) {
             const newPost = new Posts({
                 category: category,
-                image: uploadImg.url,
+                image: uploadImg,
                 adventure: advId,
                 status: true
             })

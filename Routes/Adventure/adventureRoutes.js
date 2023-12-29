@@ -30,7 +30,7 @@ router.get('/fetchchat/:userId', adventureAuth, fetchChats)
 router.get('/usersearch', adventureAuth, searchUsers)
 router.post('/message', adventureAuth, adventureMessage)
 
-router.post('/addPosts', upload.single('image'), adventureAuth, addPosts)
+router.post('/addPosts', upload.array('image', 3), adventureAuth, addPosts)
 router.get('/getPosts', adventureAuth, getPosts)
 router.post('/deletePost', adventureAuth, deletePost);
 

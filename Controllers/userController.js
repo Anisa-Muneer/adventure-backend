@@ -4,7 +4,7 @@ import Adventure from "../Models/adventureModel.js";
 import Chat from "../Models/chatModel.js";
 import Review from "../Models/reviewModel.js";
 import User from "../Models/userModel.js";
-import uploadToClodinary from "../utils/Cloudinary.js";
+import { uploadToClodinary } from "../utils/Cloudinary.js";
 
 export const getUser = async (req, res) => {
   try {
