@@ -86,7 +86,7 @@ io.on("connection", (socket) => {
 
         userKeys.forEach((userKey) => {
             const user = chat.users[userKey];
-            const senderUserId = newMessageRecieved.sender.user
+            const senderUserId = newMessageRecieved.sender?.user
                 ? newMessageRecieved.sender.user._id
                 : newMessageRecieved.sender.adventure._id;
 

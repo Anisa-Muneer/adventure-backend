@@ -1,3 +1,4 @@
+import Stripe from "stripe";
 import Posts from "../Models/PostsModel.js";
 import Adventure from "../Models/adventureModel.js";
 import Chat from "../Models/chatModel.js";
@@ -215,5 +216,44 @@ export const adventurePost = async (req, res, next) => {
   } catch (error) {
     return res.status(500).json({ error: error.message })
 
+  }
+}
+
+
+export const walletAmount = async (req, res, next) => {
+  try {
+    console.log("payment");
+    const stripe = new Stripe("sk_test_51OF855SGN2zHCLENS0gaFeQhHc7oLPwx2DSd8IC4dKhtQJIYo4OxdlJ8oONQEVI118Ero5V9RQbGEjkITJqtHQxN00HN1rnb3k");
+
+    const amount = req.params.amount;
+    console.log(amount);
+
+    const paymentintent = await stripe.paymentIntents.create({
+      amount: amount * 100,
+      currency: "inr",
+      automatic_payment_methods: {
+        enabled: true,
+      },
+    });
+    console.log(paymentintent.client_secret);
+    res.status(200).json({
+      clientSecret: paymentintent.client_secret,
+    });
+  } catch (error) {
+    console.log(error);
+    next(error)
+  }
+};
+
+export const walletpaymentSuccess = async (req, res, next) => {
+  try {
+    console.log('reached');
+    const { userId, amount } = req.body
+    console.log("payment success", userId, amount);
+    let user = await User.findByIdAndUpdate({ _id: userId }, { $inc: { wallet: amount } }, { new: true })
+    console.log(user, 'lllllllllllllllllllllllllllllll');
+    return res.status(200).json({ status: true, data: user, message: "Payment successful!" })
+  } catch (error) {
+    console.log(error);
   }
 }

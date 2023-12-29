@@ -5,6 +5,7 @@ import moment from 'moment'
 import Stripe from "stripe";
 import Booking from "../Models/bookingModel.js";
 import User from "../Models/userModel.js";
+import { log } from "util";
 
 
 export const addSlots = async (req, res, next) => {
@@ -250,11 +251,12 @@ export const getSlotsUser = async (req, res, next) => {
     if (!date) {
       return res.status(200).json({ message: "Please select a date" })
     }
+    console.log(categoryName, 's')
     const availableSlots = await Slot.find({
       adventure: adventureId,
-      category: categoryName,
+      "slotes.category": categoryName,
       "slotes.slotDate": new Date(date),
-      "slotes.isBooked": false
+      // "slotes.isBooked": false
     }).exec()
     if (availableSlots) {
       const mergedObject = availableSlots.reduce((result, slot) => {
@@ -306,30 +308,52 @@ export const payment = async (req, res, next) => {
 }
 
 export const paymentSuccess = async (req, res, next) => {
+  console.log('payment');
   try {
-    const bookingDetails = req.body.bookdata
-    console.log(bookingDetails, 'booking details is here');
+    // const bookingDetails = req.body.bookdata
+
+
+    const {
+      advId,
+      booking: { time, date, fee, NoofSlots },
+      slotDate,
+      categoryName,
+      slotId,
+      status,
+    } = req.body.bookdata;
+
+    console.log(slotDate, 'booking details is here');
     const userId = req.headers.userId
-    new Booking({
-      adventureId: bookingDetails.advId,
+
+    const arr = time.map((timedata) => ({
+      slotId: new mongoose.Types.ObjectId(timedata.id),
+      time: timedata.time,
+    }));
+
+
+    console.log(arr, 'array is here');
+    const onlineBooking = new Booking({
+      adventureId: advId,
       userId: userId,
-      entryFee: bookingDetails.entryFee,
-      categoryName: bookingDetails.categoryName,
-      scheduledAt: {
-        slotTime: bookingDetails.slotTime,
-        slotDate: bookingDetails.slotDate
-      }
+      entryFee: fee,
+      categoryName: categoryName,
+      scheduledAt: arr,
+      bookingDate: date,
+      noOfSlots: NoofSlots,
 
-    }).save()
+    })
+    let onlineData = await onlineBooking.save()
 
-    await Slot.findOneAndUpdate(
+    console.log(onlineData, 'online data is here');
+    const slotIds = arr.map((item) => item.slotId);
+
+    await Slot.updateMany(
       {
-        adventure: bookingDetails.advId,
-        slotes: {
-          $elemMatch: { _id: bookingDetails.slotId },
-        },
+        adventure: advId,
+        "slotes._id": { $in: slotIds },
       },
-      { $set: { "slotes.$.isBooked": true } }
+      { $set: { "slotes.$[elem].isBooked": true } },
+      { arrayFilters: [{ "elem._id": { $in: slotIds } }] }
     );
     return res.status(200).json({ success: true })
   } catch (error) {
@@ -338,15 +362,39 @@ export const paymentSuccess = async (req, res, next) => {
   }
 }
 
+
+// export const userBooking = async (req, res, next) => {
+//   try {
+//     const booking = await Booking.find({ "scheduledAt.isBooked": true }).populate("userId")
+//     return res.status(200).json({ data: booking })
+//   } catch (error) {
+//     return res.status(500).json({ error: error.message });
+
+//   }
+// }
+
 export const userBooking = async (req, res, next) => {
   try {
-    const booking = await Booking.find().populate("userId")
-    return res.status(200).json({ data: booking })
+    const booking = await Booking.aggregate([
+      { $match: { "scheduledAt.isBooked": true } },
+      { $unwind: "$scheduledAt" },
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+      { $unwind: "$user" },
+
+    ])
+    console.log(booking, 'booking is a here');
+    return res.status(200).json({ data: booking });
   } catch (error) {
     return res.status(500).json({ error: error.message });
-
   }
-}
+};
 
 
 export const bookingDetails = async (req, res, next) => {
@@ -354,10 +402,14 @@ export const bookingDetails = async (req, res, next) => {
   try {
     const booking = await Booking.find({ userId: id })
       .populate({
-        path: "adventureId",
-        select: "name location",
+        path: "adventureId"
       })
-      .exec();
+      .populate({
+        path: "scheduledAt",
+
+        select: "slotes.slotTime" // Adjust this based on your actual schema
+      });
+
     return res.status(200).json({ data: booking })
   } catch (error) {
     return res.status(500).json({ error: error.message });
@@ -386,14 +438,17 @@ export const slotDelete = async (req, res, next) => {
 
 export const cancelBooking = async (req, res, next) => {
   try {
+    console.log('cancel booking');
     const userId = req.headers.userId;
     const id = req.body.id;
+    const slotId = req.body.slotId
+    console.log(slotId, '00000000000000');
     const booking = await Booking.findOne({ _id: id }, { entryFee: 1 }).populate(
       "adventureId"
     );
     const adventureId = booking.adventureId._id;
     const entryFee = booking.entryFee;
-    let scheduledDate = new Date(booking.scheduledAt.slotDate);
+    let scheduledDate = new Date(booking.bookingDate);
     let currentDate = new Date();
     currentDate.setHours(0, 0, 0, 0);
 
@@ -401,17 +456,31 @@ export const cancelBooking = async (req, res, next) => {
     const formattedCurrentDate = currentDate.toLocaleString();
 
     if (formattedScheduledDate > formattedCurrentDate) {
-      const updated = await Booking.findOneAndUpdate(
-        { _id: id },
-        {
-          $set: {
-            status: "cancelled",
-          },
-        }
+      const updated = await Booking.updateOne(
+        { _id: id, "scheduledAt.slotId": slotId },
+        { $set: { "scheduledAt.$.isBooked": false } }
       );
+
+
+      console.log(updated, '9999999999999999');
 
       if (updated) {
 
+
+        const slotupdate = await Slot.updateOne(
+          {
+            adventure: adventureId,
+            'slotes._id': slotId,
+
+          },
+          {
+            $set: {
+              'slotes.$.isBooked': false,
+            },
+          }
+        );
+
+        console.log(slotupdate, 'slot update is here');
         await User.findByIdAndUpdate(
           { _id: userId },
           { $inc: { wallet: entryFee } }
@@ -437,69 +506,124 @@ export const cancelBooking = async (req, res, next) => {
 };
 
 
+// export const walletPayment = async (req, res, next) => {
+//   try {
+
+//     const {
+//       bookingId: {
+//         bookdata: { advId, totalAmount, categoryName },
+//         booking: { time, date, fee, NoofSlots }
+//       }
+//     } = req.body;
+//     console.log(req.body, 'kkkkkkkkkkkkkk');
+
+//     const usrId = req.headers.userId
+
+//     const userData = await User.findOne({ _id: usrId });
+//     if (userData.wallet <= 0 || userData.wallet < totalAmount) {
+//       return res.status(200).json({ status: false, message: 'Insufficient wallet amount' });
+//     }
+//     const arr = []
+//     time.forEach((timedata) => {
+//       const obj = {
+//         slotId: new mongoose.Types.ObjectId(timedata.id),
+//         time: timedata.time
+//       }
+//       arr.push(obj)
+//     })
+//     console.log(arr, 'array is here');
+
+//     const bookingSave = new Booking({
+//       adventureId: advId,
+//       userId: usrId,
+//       entryFee: totalAmount,
+//       categoryName: categoryName,
+//       paymentMethod: 'wallet',
+//       scheduledAt: arr,
+//       bookingDate: date,
+//       noOfSlots: NoofSlots
+//     })
+//     let bookingdata = await bookingSave.save()
+
+
+
+//     const saveSlot = await Slot.updateMany(
+//       {
+//         adventure: advId,
+//         "slotes._id": { $in: time },
+//       },
+//       { $set: { "slotes.$[elem].isBooked": true } },
+//       { arrayFilters: [{ "elem._id": { $in: time } }] }
+//     );
+
+
+
+//     console.log(saveSlot, 'save')
+
+
+//     const v = await User.updateOne({ _id: usrId }, { $inc: { wallet: - bookingdata.entryFee } })
+//     return res.status(200).json({ status: true, message: "update completed" })
+
+
+//   } catch (error) {
+//     console.log(error.message)
+//     return res.status(500).json({ error: error.message });
+//   }
+// }
+
 export const walletPayment = async (req, res, next) => {
   try {
-    const { advId, slotId, slotDate, slotTime, totalAmount, categoryName } = req.body.bookingId.bookdata;
-    // const slot = req.body.bookingId.bookdata.slotId;
-    // const adId = req.body.bookingId.bookdata.advId;
-    // const catName = req.body.bookingId.bookdata.categoryName;
-    const usrId = req.headers.userId
-    // const specificSlot = await Slot.findOne({ "slotes._id": slot }, { "slotes.$": 1 });
-    // console.log(specificSlot, 'Specific slot');
-    // if (!specificSlot) {
-    //   return res.status(404).json({ message: 'Slot not found' });
-    // }
-    // const { category } = specificSlot.slotes[0];
-    // const adventureData = await Adventure.findOne({ 'category.categoryName': category });
-    // if (!adventureData) {
-    //   return res.status(404).json({ message: 'Adventure not found' });
-    // }
-    // const matchedCategory = adventureData.category.find(cat => cat.categoryName === category);
-
-    // if (matchedCategory) {
-    // const entryFee = matchedCategory.entryFee;
+    const {
+      bookingId: {
+        bookdata: { advId, totalAmount, categoryName },
+        booking: { time, date, fee, NoofSlots },
+      },
+    } = req.body;
+    console.log(req.body, 'wallet body is here');
+    const usrId = req.headers.userId;
 
     const userData = await User.findOne({ _id: usrId });
-    console.log(userData.wallet, totalAmount);
-    if (userData.wallet <= 0 || userData.wallet < fee) {
+    if (userData.wallet <= 0 || userData.wallet < totalAmount) {
       return res.status(200).json({ status: false, message: 'Insufficient wallet amount' });
     }
+
+    const arr = time.map((timedata) => ({
+      slotId: new mongoose.Types.ObjectId(timedata.id),
+      time: timedata.time,
+    }));
+    console.log(arr, 'array is here');
 
     const bookingSave = new Booking({
       adventureId: advId,
       userId: usrId,
-      entryFee: fee,
+      entryFee: totalAmount,
       categoryName: categoryName,
       paymentMethod: 'wallet',
-      scheduledAt: {
-        slotTime: slotTime,
-        slotDate: slotDate
-      }
+      scheduledAt: arr,
+      bookingDate: date,
+      noOfSlots: NoofSlots,
+    });
+    let bookingdata = await bookingSave.save();
 
-    })
-    let bookingdata = await bookingSave.save()
+    const slotIds = arr.map((item) => item.slotId);
 
-
-    await Slot.updateOne(
+    const saveSlot = await Slot.updateMany(
       {
         adventure: advId,
-        slotes: {
-          $elemMatch: { _id: slotId },
-        },
+        "slotes._id": { $in: slotIds },
       },
-      { $set: { "slotes.$.isBooked": true } }
+      { $set: { "slotes.$[elem].isBooked": true } },
+      { arrayFilters: [{ "elem._id": { $in: slotIds } }] }
     );
 
-
-
-    const v = await User.updateOne({ _id: usrId }, { $inc: { wallet: - bookingdata.entryFee } })
-    return res.status(200).json({ status: true, message: "update completed" })
-
-
+    const v = await User.updateOne({ _id: usrId }, { $inc: { wallet: -bookingdata.entryFee } });
+    return res.status(200).json({ status: true, message: 'Update completed' });
   } catch (error) {
+    console.log(error.message);
     return res.status(500).json({ error: error.message });
   }
-}
+};
+
 
 
 export const walletHistory = async (req, res, next) => {

@@ -1,5 +1,5 @@
 import express from 'express'
-import { addReview, advProfile, adventureFilter, adventurePost, fetchChats, getReview, getUser, searchUsers, updateImage } from '../../Controllers/userController.js'
+import { addReview, advProfile, adventureFilter, adventurePost, fetchChats, getReview, getUser, searchUsers, updateImage, walletAmount, walletpaymentSuccess } from '../../Controllers/userController.js'
 import { userAuth } from '../../MiddleWares/Auth.js';
 import upload from '../../MiddleWares/Multer.js';
 import { bookingDetails, cancelBooking, getSlotDateUser, getSlotsUser, payment, paymentSuccess, walletHistory, walletPayment } from '../../Controllers/slotController.js';
@@ -18,6 +18,9 @@ router.get('/bookingDetails', userAuth, bookingDetails)
 router.put('/cancelBooking', userAuth, cancelBooking)
 router.post('/walletPayment', userAuth, walletPayment)
 router.get('/walletHistory', userAuth, walletHistory)
+
+router.get("/walletamount/:id/:amount", userAuth, walletAmount);
+router.put("/walletpaymentSuccess", userAuth, walletpaymentSuccess);
 
 
 router.get('/advProfile/:id', userAuth, advProfile)
