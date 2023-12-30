@@ -340,6 +340,8 @@ export const paymentSuccess = async (req, res, next) => {
       scheduledAt: arr,
       bookingDate: date,
       noOfSlots: NoofSlots,
+      status: 'success',
+      date: new Date()
 
     })
     let onlineData = await onlineBooking.save()
@@ -458,7 +460,9 @@ export const cancelBooking = async (req, res, next) => {
     if (formattedScheduledDate > formattedCurrentDate) {
       const updated = await Booking.updateOne(
         { _id: id, "scheduledAt.slotId": slotId },
-        { $set: { "scheduledAt.$.isBooked": false } }
+        {
+          $set: { "scheduledAt.$.isBooked": false, status: 'cancel' },
+        }
       );
 
 
@@ -602,6 +606,8 @@ export const walletPayment = async (req, res, next) => {
       scheduledAt: arr,
       bookingDate: date,
       noOfSlots: NoofSlots,
+      status: 'success',
+      date: new Date()
     });
     let bookingdata = await bookingSave.save();
 

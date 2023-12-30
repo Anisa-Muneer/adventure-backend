@@ -61,19 +61,15 @@ const bookingSchema = new Schema({
   },
   status: {
     type: String,
-    enum: [
-      "completed",
-      "cancelled",
-      "notCompleted",
-
-    ],
-    default: "notCompleted",
+    default: "pending",
   },
+  date: {
+    type: Date,
 
-},
-  {
-    timestamps: { createdAt: "created_at" },
   }
+
+}
+
 )
 
 const Booking = mongoose.model('Booking', bookingSchema)

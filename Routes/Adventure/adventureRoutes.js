@@ -1,7 +1,7 @@
 import express from 'express'
 const router = express.Router()
 import { adventureAuth, userAuth } from '../../MiddleWares/Auth.js'
-import { ProfileImage, addCategory, addPosts, advCategory, allCategory, deletePost, editCategory, editProfile, fetchChats, getAdventure, getPosts, manageCategory, manageCategoryList, searchUsers } from '../../Controllers/adventureController.js'
+import { ProfileImage, addCategory, addPosts, advCategory, allCategory, dashboardData, deletePost, editCategory, editProfile, fetchChats, getAdventure, getPosts, manageCategory, manageCategoryList, searchUsers } from '../../Controllers/adventureController.js'
 import upload from '../../MiddleWares/Multer.js'
 import { addSlots, getSlotDate, getSlots, slotCategory, slotDelete, userBooking } from '../../Controllers/slotController.js'
 import { adventureMessage } from '../../Controllers/chatController.js'
@@ -33,6 +33,8 @@ router.post('/message', adventureAuth, adventureMessage)
 router.post('/addPosts', upload.array('image', 3), adventureAuth, addPosts)
 router.get('/getPosts', adventureAuth, getPosts)
 router.post('/deletePost', adventureAuth, deletePost);
+
+router.get('/dashboard', adventureAuth, dashboardData)
 
 
 export default router

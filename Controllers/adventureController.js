@@ -330,3 +330,27 @@ export const deletePost = async (req, res, next) => {
         return res.status(500).json({ error: error.messge });
     }
 }
+
+export const dashboardData = async (req, res, next) => {
+    try {
+        const advId = req.headers.adventureId;
+        console.log(advId, 'bbbbbbbbbbbbbbbbbbbbb');
+
+        // Get the number of users who have booked
+        const usersCount = await Booking.distinct('userId', {
+            'adventureId': advId,
+            'scheduledAt.isBooked': true,
+        }).count();
+        console.log(usersCount);
+
+        // Get the number of bookings for the adventure
+        const bookingsCount = await Booking.countDocuments({
+            'adventureId': advId,
+            'scheduledAt.isBooked': true,
+        });
+        console.log(bookingsCount);
+        return res.status(200).json({ usersCount, bookingsCount });
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+};
