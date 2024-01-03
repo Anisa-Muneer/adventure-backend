@@ -122,13 +122,10 @@ export const adminBooking = async (req, res, next) => {
             { $unwind: "$user" },
 
         ])
-        console.log(booking, 'booking is a here');
         const populatedBooking = await Booking.populate(booking, {
             path: "adventureId",
             model: "Adventure",
         });
-
-        console.log(populatedBooking, 'booking is here with adventure details');
         return res.status(200).json({ data: populatedBooking });
     } catch (error) {
         return res.status(500).json({ error: error.message });
@@ -148,7 +145,6 @@ export const rejectAdventure = async (req, res, next) => {
             }
         );
         await sendRejectionMail(reject.email, "verification rejected", reason);
-
         return res.status(200).json({ reject: true, message: "adventure rejected" });
     } catch (error) {
         console.log(error.message);
@@ -253,7 +249,6 @@ export const adminDashboard = async (req, res, next) => {
         const secondYearTotalSales = secondYearSales.length > 0 ? secondYearSales[0].totalAmount : 0
         const thirdYearTotalSales = thirdYearSales.length > 0 ? thirdYearSales[0].totalAmount : 0
 
-        console.log(newYearSales, 'new year');
         res.status(200).json({ totalSales, advLength, userLength, newYearTotalSales, secondYearTotalSales, thirdYearTotalSales, startDate, firstDate, thirdDate })
     } catch (error) {
         return res.status(500).json({ error: error.message });

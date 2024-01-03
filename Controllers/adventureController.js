@@ -94,7 +94,6 @@ export const addCategory = async (req, res, next) => {
         const { categoryName, entryFee, catDescription } = req.body;
         const img = req.file.path;
 
-        // Ensure the uploadToClodinary function is implemented correctly
         const uploadImg = await uploadToClodinary(img, "category");
 
         const exist = await Adventure.findOne({
@@ -238,7 +237,6 @@ export const searchUsers = async (req, res) => {
                 ],
             }
             : {};
-        console.log(keyword);
 
         const users = await User.find(keyword); //.find({ _id: { $ne: req.user._id } });
 
@@ -269,12 +267,9 @@ export const editCategory = async (req, res, next) => {
                 }
             },
             { new: true })
-        console.log(editCat, 'edit cat is heere');
         if (editCategory) {
-            // Category found
             return res.status(200).json({ updated: true, data: editCat, message: "Category Found" })
         } else {
-            // Category not found
             return res.status(200).json({ message: 'Data not found' })
         }
     } catch (error) {
@@ -297,7 +292,6 @@ export const addPosts = async (req, res, next) => {
                 status: true
             })
             let posts = await newPost.save()
-            console.log(posts, 'Post is saved')
             return res.status(200).json({ created: true, data: posts, message: 'Post is added' })
 
         }
@@ -334,21 +328,16 @@ export const deletePost = async (req, res, next) => {
 export const dashboardData = async (req, res, next) => {
     try {
         const advId = req.headers.adventureId;
-        console.log(advId, 'bbbbbbbbbbbbbbbbbbbbb');
 
-        // Get the number of users who have booked
         const usersCount = await Booking.distinct('userId', {
             'adventureId': advId,
             'scheduledAt.isBooked': true,
         }).count();
-        console.log(usersCount);
 
-        // Get the number of bookings for the adventure
         const bookingsCount = await Booking.countDocuments({
             'adventureId': advId,
             'scheduledAt.isBooked': true,
         });
-        console.log(bookingsCount);
         return res.status(200).json({ usersCount, bookingsCount });
     } catch (error) {
         return res.status(500).json({ error: error.message });

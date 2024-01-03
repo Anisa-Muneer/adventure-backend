@@ -209,7 +209,6 @@ export const adventurePost = async (req, res, next) => {
   try {
     const id = req.params.id
     const posts = await Posts.find({ adventure: id })
-    console.log(posts, "posts in");
     if (posts) {
       return res.status(200).json({ data: posts, message: 'Post found' })
     }
@@ -222,7 +221,6 @@ export const adventurePost = async (req, res, next) => {
 
 export const walletAmount = async (req, res, next) => {
   try {
-    console.log("payment");
     const stripe = new Stripe("sk_test_51OF855SGN2zHCLENS0gaFeQhHc7oLPwx2DSd8IC4dKhtQJIYo4OxdlJ8oONQEVI118Ero5V9RQbGEjkITJqtHQxN00HN1rnb3k");
 
     const amount = req.params.amount;
@@ -247,11 +245,8 @@ export const walletAmount = async (req, res, next) => {
 
 export const walletpaymentSuccess = async (req, res, next) => {
   try {
-    console.log('reached');
     const { userId, amount } = req.body
-    console.log("payment success", userId, amount);
     let user = await User.findByIdAndUpdate({ _id: userId }, { $inc: { wallet: amount } }, { new: true })
-    console.log(user, 'lllllllllllllllllllllllllllllll');
     return res.status(200).json({ status: true, data: user, message: "Payment successful!" })
   } catch (error) {
     console.log(error);

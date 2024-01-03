@@ -5,7 +5,6 @@ import moment from 'moment'
 import Stripe from "stripe";
 import Booking from "../Models/bookingModel.js";
 import User from "../Models/userModel.js";
-import { log } from "util";
 
 
 export const addSlots = async (req, res, next) => {
@@ -71,10 +70,8 @@ export const addSlots = async (req, res, next) => {
         slotes: slotObj.slots,
       };
     });
-    console.log(JSON.stringify(slotData), 'pppppppppppppp')
 
     const savedSlots = await Slot.create(slotData);
-    console.log(JSON.stringify(savedSlots, null, 2), 'ooooooooooooooooooooo');
     return res.status(200).json(savedSlots);
 
   } catch (error) {
@@ -308,7 +305,6 @@ export const payment = async (req, res, next) => {
 }
 
 export const paymentSuccess = async (req, res, next) => {
-  console.log('payment');
   try {
     // const bookingDetails = req.body.bookdata
 
@@ -331,7 +327,6 @@ export const paymentSuccess = async (req, res, next) => {
     }));
 
 
-    console.log(arr, 'array is here');
     const onlineBooking = new Booking({
       adventureId: advId,
       userId: userId,
@@ -346,7 +341,6 @@ export const paymentSuccess = async (req, res, next) => {
     })
     let onlineData = await onlineBooking.save()
 
-    console.log(onlineData, 'online data is here');
     const slotIds = arr.map((item) => item.slotId);
 
     await Slot.updateMany(
@@ -409,7 +403,7 @@ export const bookingDetails = async (req, res, next) => {
       .populate({
         path: "scheduledAt",
 
-        select: "slotes.slotTime" // Adjust this based on your actual schema
+        select: "slotes.slotTime"
       });
 
     return res.status(200).json({ data: booking })
@@ -440,11 +434,9 @@ export const slotDelete = async (req, res, next) => {
 
 export const cancelBooking = async (req, res, next) => {
   try {
-    console.log('cancel booking');
     const userId = req.headers.userId;
     const id = req.body.id;
     const slotId = req.body.slotId
-    console.log(slotId, '00000000000000');
     const booking = await Booking.findOne({ _id: id }, { entryFee: 1 }).populate(
       "adventureId"
     );
@@ -465,12 +457,7 @@ export const cancelBooking = async (req, res, next) => {
         }
       );
 
-
-      console.log(updated, '9999999999999999');
-
       if (updated) {
-
-
         const slotupdate = await Slot.updateOne(
           {
             adventure: adventureId,
@@ -484,7 +471,6 @@ export const cancelBooking = async (req, res, next) => {
           }
         );
 
-        console.log(slotupdate, 'slot update is here');
         await User.findByIdAndUpdate(
           { _id: userId },
           { $inc: { wallet: entryFee } }
@@ -583,7 +569,6 @@ export const walletPayment = async (req, res, next) => {
         booking: { time, date, fee, NoofSlots },
       },
     } = req.body;
-    console.log(req.body, 'wallet body is here');
     const usrId = req.headers.userId;
 
     const userData = await User.findOne({ _id: usrId });
@@ -595,7 +580,6 @@ export const walletPayment = async (req, res, next) => {
       slotId: new mongoose.Types.ObjectId(timedata.id),
       time: timedata.time,
     }));
-    console.log(arr, 'array is here');
 
     const bookingSave = new Booking({
       adventureId: advId,
